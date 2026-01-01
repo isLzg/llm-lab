@@ -1,11 +1,7 @@
-import { RunButton } from "./components/run-button";
+import { ApiDemo } from "./components/api-demo";
 
 function App() {
-  return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <RunButton />
-    </div>
-  );
+  return <ApiDemo />;
 }
 
 export default App;
