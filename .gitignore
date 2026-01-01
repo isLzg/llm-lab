@@ -1,16 +1,13 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Monorepo root - common ignores
+# Package-specific .gitignore files are in packages/*/
 
+# Dependencies 
 node_modules
-dist
-dist-ssr
-*.local
+
+# Lock files 
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Editor directories and files
 .vscode/*
