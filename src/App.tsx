@@ -1,7 +1,9 @@
+import { RunButton } from "./components/run-button";
+
 function App() {
   return (
-    <div>
-      <h1>llm-lab</h1>
+    <div className="flex flex-col items-center justify-center h-screen">
+      <RunButton />
     </div>
   );
 }
