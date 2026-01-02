@@ -10,7 +10,7 @@ export const ApiDemo = () => {
   const handleGetUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await api.users.get();
+      const { data, error } = await api.demos.get();
       if (error) {
         setResult(`Error: ${JSON.stringify(error, null, 2)}`);
       } else {
@@ -27,7 +27,7 @@ export const ApiDemo = () => {
   const handleGetUserById = async () => {
     setLoading(true);
     try {
-      const { data, error } = await api.users({ id: "1" }).get();
+      const { data, error } = await api.demos({ id: "1" }).get();
       if (error) {
         setResult(`Error: ${JSON.stringify(error, null, 2)}`);
       } else {
@@ -44,7 +44,7 @@ export const ApiDemo = () => {
   const handleCreateUser = async () => {
     setLoading(true);
     try {
-      const { data, error } = await api.users.post({
+      const { data, error } = await api.demos.post({
         name: "Charlie",
         email: "charlie@example.com",
       });
@@ -64,7 +64,7 @@ export const ApiDemo = () => {
   const handleUpdateUser = async () => {
     setLoading(true);
     try {
-      const { data, error } = await api.users({ id: "1" }).put({
+      const { data, error } = await api.demos({ id: "1" }).put({
         name: "Alice Updated",
         email: "alice.updated@example.com",
       });
