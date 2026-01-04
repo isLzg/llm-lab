@@ -36,26 +36,27 @@ export const LLMService = {
     }
   },
 
-  // DeepSeek API
-  async generateContentWithDeepSeek(
+  // DeepSeek API with streaming
+  async *generateContentWithDeepSeekStream(
     body: typeof LLMModel.generateContentBody.static
-  ): Promise<typeof LLMModel.generateContentResponse.static> {
-    console.log("🤖 DeepSeek ~ body:", body);
+  ): AsyncGenerator<string, void, unknown> {
+    console.log("🤖 DeepSeek Stream ~ body:", body);
 
     try {
-      const completion = await deepseek.chat.completions.create({
+      const stream = await deepseek.chat.completions.create({
         messages: [{ role: "user", content: body.contents }],
         model: body.model || "deepseek-chat",
+        stream: true,
       });
 
-      const response = completion.choices[0].message.content;
-      console.log("🤖 DeepSeek ~ response:", response);
-
-      return {
-        text: response || "",
-      };
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || "";
+        if (content) {
+          yield content;
+        }
+      }
     } catch (error) {
-      console.error("❌ DeepSeek API error:", error);
+      console.error("❌ DeepSeek Stream API error:", error);
       throw error;
     }
   },

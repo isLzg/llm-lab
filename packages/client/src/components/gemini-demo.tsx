@@ -25,15 +25,67 @@ export const GeminiDemo = () => {
         }
         response = data?.text || "No response";
       } else {
-        const { data, error } = await api.llm.deepseek.generate.post({
-          contents: question,
-          model: "deepseek-chat",
-        });
-        if (error) {
-          setResult(`Error: ${JSON.stringify(error, null, 2)}`);
+        // Use streaming for DeepSeek
+        const fetchResponse = await fetch(
+          "http://localhost:3000/llm/deepseek/generate",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: question,
+              model: "deepseek-chat",
+            }),
+          }
+        );
+
+        if (!fetchResponse.ok) {
+          const errorData = await fetchResponse
+            .json()
+            .catch(() => ({ error: "Unknown error" }));
+          setResult(`Error: ${JSON.stringify(errorData, null, 2)}`);
           return;
         }
-        response = data?.text || "No response";
+
+        // Read stream
+        const reader = fetchResponse.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = "";
+
+        if (!reader) {
+          setResult("Error: No response stream");
+          return;
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.error) {
+                  setResult(`Error: ${data.error}`);
+                  return;
+                }
+                if (data.text) {
+                  accumulatedText += data.text;
+                  setResult(accumulatedText);
+                }
+              } catch (e) {
+                // Ignore parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+
+        // Stream is complete, result is already updated
+        return;
       }
 
       setResult(response);
