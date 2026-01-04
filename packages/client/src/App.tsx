@@ -1,7 +1,8 @@
-import { GeminiDemo } from "./components/gemini-demo";
+import { RouterProvider } from "react-router/dom";
+import routes from "./route";
 
 function App() {
-  return <GeminiDemo />;
+  return <RouterProvider router={routes} />;
 }
 
 export default App;
