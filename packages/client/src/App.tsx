@@ -1,7 +1,7 @@
-import { ApiDemo } from "./components/api-demo";
+import { GeminiDemo } from "./components/gemini-demo";
 
 function App() {
-  return <ApiDemo />;
+  return <GeminiDemo />;
 }
 
 export default App;

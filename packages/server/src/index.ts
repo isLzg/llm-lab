@@ -1,12 +1,14 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { demos } from "./modules/demos";
+import { llm } from "./modules/llm";
 
 const app = new Elysia()
   .use(cors())
   .get("/", () => "Hello Elysia")
   .get("/health", () => ({ status: "ok" }))
   .use(demos)
+  .use(llm)
   .listen(3000);
 
 export type App = typeof app;
