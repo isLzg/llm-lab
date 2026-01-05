@@ -5,6 +5,7 @@ import {
   VideoDemo,
   ImageDemo,
   MastraDemo,
+  UsageDemo,
   Home,
 } from "./pages";
 
@@ -32,6 +33,10 @@ const routes = createBrowserRouter([
   {
     path: "/mastra-demo",
     element: <MastraDemo />,
+  },
+  {
+    path: "/usage-demo",
+    element: <UsageDemo />,
   },
 ]);
 

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { LLMModel } from "./model";
+import * as UsageService from "../usage/service";
 
 const gemini = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -27,6 +28,14 @@ export const LLMService = {
       const text = response.text || "";
       console.log("🤖 Gemini ~ response:", text);
 
+      // Record token usage
+      UsageService.recordUsage({
+        service: "gemini",
+        model: body.model || "gemini-2.5-flash",
+        inputText: body.contents,
+        outputText: text,
+      });
+
       return {
         text,
       };
@@ -42,6 +51,8 @@ export const LLMService = {
   ): AsyncGenerator<string, void, unknown> {
     console.log("🤖 DeepSeek Stream ~ body:", body);
 
+    let accumulatedOutput = "";
+
     try {
       const stream = await deepseek.chat.completions.create({
         messages: [{ role: "user", content: body.contents }],
@@ -52,9 +63,18 @@ export const LLMService = {
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || "";
         if (content) {
+          accumulatedOutput += content;
           yield content;
         }
       }
+
+      // Record token usage after stream completes
+      UsageService.recordUsage({
+        service: "deepseek",
+        model: body.model || "deepseek-chat",
+        inputText: body.contents,
+        outputText: accumulatedOutput,
+      });
     } catch (error) {
       console.error("❌ DeepSeek Stream API error:", error);
       throw error;
@@ -517,7 +537,7 @@ export const LLMService = {
 
   // Mastra Agent API
   /**
-   * 发送消息给 Mastra Weather Agent（流式响应）
+   * 发送消息给 Mastra Weather Agent
    */
   async *streamWithMastraAgent(
     body: typeof LLMModel.mastraAgentChatBody.static
@@ -564,6 +584,8 @@ export const LLMService = {
 
       let buffer = "";
       let yieldCount = 0;
+      let accumulatedOutput = "";
+      const inputText = body.messages.map((m) => m.content).join("\n");
 
       while (true) {
         const { done, value } = await reader.read();
@@ -636,6 +658,7 @@ export const LLMService = {
               // 只 yield 实际文本内容
               if (textToYield && textToYield.length > 0) {
                 yieldCount++;
+                accumulatedOutput += textToYield;
                 yield textToYield;
               }
             } catch (e) {
@@ -649,6 +672,14 @@ export const LLMService = {
           }
         }
       }
+
+      // Record token usage after stream completes
+      UsageService.recordUsage({
+        service: "mastra",
+        model: "weatherAgent",
+        inputText,
+        outputText: accumulatedOutput,
+      });
     } catch (error) {
       console.error("❌ Mastra Agent Stream API error:", error);
       throw error instanceof Error
