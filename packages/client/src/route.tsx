@@ -1,5 +1,12 @@
 import { createBrowserRouter } from "react-router";
-import { ApiDemo, ChatDemo, VideoDemo, ImageDemo, Home } from "./pages";
+import {
+  ApiDemo,
+  ChatDemo,
+  VideoDemo,
+  ImageDemo,
+  MastraDemo,
+  Home,
+} from "./pages";
 
 const routes = createBrowserRouter([
   {
@@ -21,6 +28,10 @@ const routes = createBrowserRouter([
   {
     path: "/image-demo",
     element: <ImageDemo />,
+  },
+  {
+    path: "/mastra-demo",
+    element: <MastraDemo />,
   },
 ]);
 

@@ -514,4 +514,146 @@ export const LLMService = {
       throw error;
     }
   },
+
+  // Mastra Agent API
+  /**
+   * 发送消息给 Mastra Weather Agent（流式响应）
+   */
+  async *streamWithMastraAgent(
+    body: typeof LLMModel.mastraAgentChatBody.static
+  ): AsyncGenerator<string, void, unknown> {
+    const mastraApiBaseUrl =
+      process.env.MASTRA_API_BASE_URL || "http://localhost:4111";
+    const url = `${mastraApiBaseUrl}/api/agents/weatherAgent/stream`;
+
+    try {
+      // 添加超时处理（30秒）
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Request timeout after 30 seconds"));
+        }, 30000);
+      });
+
+      const fetchPromise = fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: body.messages }),
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP error! status: ${response.status}`,
+        }));
+        const errorMessage =
+          (errorData as { error?: string })?.error ||
+          `HTTP error! status: ${response.status}`;
+        console.error("❌ Mastra Agent Stream API error:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("Response body is not readable");
+      }
+
+      let buffer = "";
+      let yieldCount = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        const decoded = decoder.decode(value, { stream: true });
+        buffer += decoded;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.trim() === "") continue;
+
+          if (line.startsWith("data: ")) {
+            const dataContent = line.slice(6).trim();
+
+            // 处理 [DONE] 标记
+            if (dataContent === "[DONE]") {
+              continue;
+            }
+
+            try {
+              const data = JSON.parse(dataContent);
+
+              let textToYield: string | null = null;
+
+              // 优先处理流式事件（text-delta, text-end）
+              if (data.type === "text-delta" || data.type === "text-end") {
+                // 流式文本增量事件
+                if (data.content && typeof data.content === "string") {
+                  textToYield = data.content;
+                } else if (data.text && typeof data.text === "string") {
+                  textToYield = data.text;
+                } else if (data.delta && typeof data.delta === "string") {
+                  textToYield = data.delta;
+                } else if (
+                  data.payload?.content &&
+                  typeof data.payload.content === "string"
+                ) {
+                  textToYield = data.payload.content;
+                } else if (
+                  data.payload?.text &&
+                  typeof data.payload.text === "string"
+                ) {
+                  textToYield = data.payload.text;
+                }
+              }
+              // finish 事件：如果只有 finish 事件（没有流式事件），将完整文本分块发送以保持流式效果
+              else if (data.type === "finish" && data.payload?.output?.text) {
+                const fullText = data.payload.output.text;
+                // 如果这是第一个 yield（说明之前没有流式事件），将完整文本分块发送
+                if (yieldCount === 0) {
+                  // 将文本分成小块，模拟流式效果
+                  const chunkSize = 10; // 每次发送10个字符
+                  for (let i = 0; i < fullText.length; i += chunkSize) {
+                    const chunk = fullText.slice(i, i + chunkSize);
+                    yield chunk;
+                    yieldCount++;
+                    // 添加小延迟以模拟流式效果（可选）
+                    await new Promise((resolve) => setTimeout(resolve, 10));
+                  }
+                  return; // 已经 yield 完成，不需要继续处理
+                }
+              }
+              // 跳过所有其他事件类型（tool-call, tool-result, step-finish, text-start 等）
+
+              // 只 yield 实际文本内容
+              if (textToYield && textToYield.length > 0) {
+                yieldCount++;
+                yield textToYield;
+              }
+            } catch (e) {
+              console.error(
+                "❌ 解析 Mastra 数据失败:",
+                e,
+                "原始数据:",
+                dataContent.substring(0, 200)
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ Mastra Agent Stream API error:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Unknown error occurred");
+    }
+  },
 };

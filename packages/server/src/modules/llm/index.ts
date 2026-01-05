@@ -135,4 +135,45 @@ export const llm = new Elysia({ prefix: "/llm" })
         taskId: t.String(),
       }),
     }
+  )
+  // Mastra Agent routes
+  .post(
+    "/mastra/stream",
+    async ({ body }) => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of LLMService.streamWithMastraAgent(body)) {
+              const encoded = encoder.encode(
+                `data: ${JSON.stringify({ chunk })}\n\n`
+              );
+              controller.enqueue(encoded);
+            }
+            controller.close();
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            console.error("❌ Route ~ Stream error:", errorMessage);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: errorMessage })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    },
+    {
+      body: LLMModel.mastraAgentChatBody,
+    }
   );

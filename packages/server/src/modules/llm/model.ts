@@ -97,4 +97,19 @@ export const LLMModel = {
     guidance_scale: t.Optional(t.Number()),
     num_images: t.Optional(t.Number()),
   }),
+
+  // Mastra Agent models
+  // POST body for Mastra Agent chat
+  mastraAgentChatBody: t.Object({
+    messages: t.Array(
+      t.Object({
+        role: t.Union([
+          t.Literal("user"),
+          t.Literal("assistant"),
+          t.Literal("system"),
+        ]),
+        content: t.String(),
+      })
+    ),
+  }),
 };
