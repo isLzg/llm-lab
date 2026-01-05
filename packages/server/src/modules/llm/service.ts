@@ -166,4 +166,109 @@ export const LLMService = {
       throw error;
     }
   },
+
+  // Cancel video generation task
+  async cancelVideoTask(
+    taskId: string
+  ): Promise<typeof LLMModel.cancelVideoTaskResponse.static> {
+    console.log("🎬 Cancel Video Task ~ taskId:", taskId);
+
+    try {
+      // 先查询任务状态
+      const taskStatus = await this.queryVideoTask(taskId);
+      const status = taskStatus.status;
+
+      // 如果任务已经完成或失败，不需要删除
+      if (status === "succeeded" || status === "failed") {
+        return {
+          success: false,
+          message: `任务已经${
+            status === "succeeded" ? "完成" : "失败"
+          }，无需取消。`,
+        };
+      }
+
+      // 如果任务正在运行，根据 API 限制无法删除
+      if (status === "running" || status === "processing") {
+        return {
+          success: false,
+          message: "任务正在运行中，火山引擎 API 不允许删除正在运行的任务。",
+        };
+      }
+
+      // 如果任务处于 queued 状态，可以尝试删除
+      if (status === "queued") {
+        const response = await fetch(
+          `${
+            process.env.VOLCENGINE_API_BASE ||
+            "https://ark.cn-beijing.volces.com/api/v3"
+          }/contents/generations/tasks/${taskId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${process.env.VOLCENGINE_API_KEY || ""}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = (await response.json().catch(() => ({
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          }))) as {
+            error?: {
+              code?: string;
+              message?: string;
+            };
+            ResponseMetadata?: {
+              Error?: {
+                Code?: string;
+                Message?: string;
+              };
+            };
+          };
+
+          // 检查是否是"任务正在运行无法删除"的错误（可能在查询和删除之间状态改变了）
+          const errorCode =
+            errorData?.error?.code || errorData?.ResponseMetadata?.Error?.Code;
+          const errorMessage =
+            errorData?.error?.message ||
+            errorData?.ResponseMetadata?.Error?.Message ||
+            "";
+
+          if (
+            errorCode === "InvalidAction.RunningTaskDeletion" ||
+            errorMessage.includes("currently running")
+          ) {
+            return {
+              success: false,
+              message: "任务状态已变为运行中，无法删除。",
+            };
+          }
+
+          // 其他错误
+          console.error("❌ Video Cancel API error:", errorData);
+          throw new Error(
+            `Video Cancel API error: ${JSON.stringify(errorData)}`
+          );
+        }
+
+        // DELETE 请求返回空响应 {}，这是正常的
+        console.log("🎬 Cancel Video Task ~ response: {} (success)");
+
+        return {
+          success: true,
+          message: "任务已取消",
+        };
+      }
+
+      // 其他未知状态
+      return {
+        success: false,
+        message: `任务状态为 ${status}，无法确定是否可以取消。`,
+      };
+    } catch (error) {
+      console.error("❌ Video Cancel API error:", error);
+      throw error;
+    }
+  },
 };

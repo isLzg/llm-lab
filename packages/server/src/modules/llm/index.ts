@@ -73,4 +73,13 @@ export const llm = new Elysia({ prefix: "/llm" })
     {
       params: LLMModel.queryVideoTaskParams,
     }
+  )
+  .delete(
+    "/video/task/:taskId",
+    ({ params }) => {
+      return LLMService.cancelVideoTask(params.taskId);
+    },
+    {
+      params: LLMModel.cancelVideoTaskParams,
+    }
   );

@@ -67,5 +67,20 @@ export const LLMModel = {
       })
     ),
   }),
-};
 
+  // Cancel task params
+  cancelVideoTaskParams: t.Object(
+    {
+      taskId: t.String(),
+    },
+    {
+      description: "Task ID parameter for cancellation",
+    }
+  ),
+
+  // Cancel task response
+  cancelVideoTaskResponse: t.Object({
+    success: t.Boolean(),
+    message: t.Optional(t.String()),
+  }),
+};

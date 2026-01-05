@@ -1,5 +1,5 @@
 import { Button } from "@base-ui/react/button";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { api } from "../api/client";
 
 export const VideoDemo = () => {
@@ -7,12 +7,23 @@ export const VideoDemo = () => {
   const [loading, setLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [status, setStatus] = useState<string>("");
+  const [currentTaskId, setCurrentTaskId] = useState<string>("");
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isCancelledRef = useRef<boolean>(false);
 
   const handleCreateVideoTask = async () => {
     setLoading(true);
     setResult("");
     setVideoUrl("");
     setStatus("");
+    setCurrentTaskId("");
+    isCancelledRef.current = false;
+
+    // 清除之前的轮询
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
 
     try {
       // 创建视频生成任务
@@ -34,6 +45,7 @@ export const VideoDemo = () => {
       }
 
       const newTaskId = data?.id || "";
+      setCurrentTaskId(newTaskId);
       setResult(`任务创建成功！任务ID: ${newTaskId}\n正在查询任务状态...`);
 
       // 开始轮询查询任务状态
@@ -50,6 +62,12 @@ export const VideoDemo = () => {
     let attempts = 0;
 
     const poll = async () => {
+      // 检查是否已取消
+      if (isCancelledRef.current) {
+        setLoading(false);
+        return;
+      }
+
       if (attempts >= maxAttempts) {
         setResult(
           (prev) =>
@@ -63,6 +81,12 @@ export const VideoDemo = () => {
 
       try {
         const { data, error } = await api.llm.video.task({ taskId: id }).get();
+
+        // 再次检查是否已取消
+        if (isCancelledRef.current) {
+          setLoading(false);
+          return;
+        }
 
         if (error) {
           setResult(
@@ -95,6 +119,7 @@ export const VideoDemo = () => {
             setResult((prev) => `${prev}\n\n✅ 任务完成，但未获取到视频地址。`);
           }
           setLoading(false);
+          pollTimeoutRef.current = null;
           return;
         }
 
@@ -104,6 +129,7 @@ export const VideoDemo = () => {
             : "任务失败";
           setResult((prev) => `${prev}\n\n❌ ${errorMsg}`);
           setLoading(false);
+          pollTimeoutRef.current = null;
           return;
         }
 
@@ -113,22 +139,130 @@ export const VideoDemo = () => {
           currentStatus === "running" ||
           currentStatus === "processing"
         ) {
-          setTimeout(poll, pollInterval);
+          pollTimeoutRef.current = setTimeout(poll, pollInterval);
         } else {
           setResult(
             (prev) => `${prev}\n\n任务状态: ${currentStatus}，停止轮询。`
           );
           setLoading(false);
+          pollTimeoutRef.current = null;
         }
       } catch (err) {
+        // 检查是否已取消
+        if (isCancelledRef.current) {
+          setLoading(false);
+          return;
+        }
         setResult((prev) => `${prev}\n查询异常 (第${attempts}次): ${err}`);
         // 继续尝试
-        setTimeout(poll, pollInterval);
+        pollTimeoutRef.current = setTimeout(poll, pollInterval);
       }
     };
 
     // 开始第一次查询
-    setTimeout(poll, pollInterval);
+    pollTimeoutRef.current = setTimeout(poll, pollInterval);
+  };
+
+  // 取消任务（仅适用于 queued 状态）
+  const handleCancelTask = async () => {
+    if (!currentTaskId) {
+      setResult((prev) => `${prev}\n\n❌ 没有正在进行的任务可以取消。`);
+      return;
+    }
+
+    // 检查任务状态，只有 queued 状态才能取消
+    if (status !== "queued") {
+      setResult(
+        (prev) =>
+          `${prev}\n\n⚠️ 任务状态为 ${status}，无法取消。只有排队中的任务可以取消。`
+      );
+      return;
+    }
+
+    try {
+      setResult((prev) => `${prev}\n\n正在取消任务...`);
+
+      // 调用后端 API 取消任务
+      const { data, error } = await api.llm.video
+        .task({ taskId: currentTaskId })
+        .delete();
+
+      // 如果 API 调用失败（网络错误等），停止轮询并显示错误
+      if (error) {
+        isCancelledRef.current = true;
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
+        setResult(
+          (prev) =>
+            `${prev}\n\n❌ 取消任务失败: ${JSON.stringify(error, null, 2)}`
+        );
+        setStatus("monitoring_stopped");
+        setLoading(false);
+        setCurrentTaskId("");
+        return;
+      }
+
+      // API 调用成功
+      if (data?.success) {
+        // 取消成功，停止轮询
+        isCancelledRef.current = true;
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
+        setResult(
+          (prev) => `${prev}\n\n✅ 任务已取消: ${data?.message || "取消成功"}`
+        );
+        setStatus("cancelled");
+        setLoading(false);
+        setCurrentTaskId("");
+      } else {
+        // 后端返回 success: false
+        isCancelledRef.current = true;
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
+        setResult(
+          (prev) =>
+            `${prev}\n\n⚠️ ${data?.message || "取消失败"}\n已停止监控此任务。`
+        );
+        setStatus("monitoring_stopped");
+        setLoading(false);
+        setCurrentTaskId("");
+      }
+    } catch (err) {
+      // 发生异常，停止轮询
+      isCancelledRef.current = true;
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
+      setResult(
+        (prev) => `${prev}\n\n❌ 取消任务时发生异常: ${err}\n已停止监控此任务。`
+      );
+      setStatus("monitoring_stopped");
+      setLoading(false);
+      setCurrentTaskId("");
+    }
+  };
+
+  // 删除记录（清除本地状态，不调用 API）
+  const handleDeleteRecord = () => {
+    setResult("");
+    setVideoUrl("");
+    setStatus("");
+    setCurrentTaskId("");
+    setLoading(false);
+
+    // 清除轮询
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    isCancelledRef.current = false;
   };
 
   const buttonClass =
@@ -149,6 +283,36 @@ export const VideoDemo = () => {
         >
           {loading ? "生成中..." : "生成视频"}
         </Button>
+        {/* 只有 queued 状态才显示取消任务按钮 */}
+        {loading && currentTaskId && status === "queued" && (
+          <Button
+            className={buttonClass
+              .replace("bg-gray-50", "bg-red-50")
+              .replace("hover:bg-gray-100", "hover:bg-red-100")
+              .replace("active:bg-gray-200", "active:bg-red-200")
+              .replace("text-gray-900", "text-red-900")}
+            onClick={handleCancelTask}
+          >
+            取消任务
+          </Button>
+        )}
+        {/* 任务已完成或失败时显示删除记录按钮 */}
+        {!loading &&
+          currentTaskId &&
+          (status === "succeeded" ||
+            status === "failed" ||
+            status === "cancelled") && (
+            <Button
+              className={buttonClass
+                .replace("bg-gray-50", "bg-gray-100")
+                .replace("hover:bg-gray-100", "hover:bg-gray-200")
+                .replace("active:bg-gray-200", "active:bg-gray-300")
+                .replace("text-gray-900", "text-gray-700")}
+              onClick={handleDeleteRecord}
+            >
+              删除记录
+            </Button>
+          )}
       </div>
 
       {status && (
