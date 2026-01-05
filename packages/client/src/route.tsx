@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router";
-import { ApiDemo, ChatDemo, VideoDemo, ImageDemo, Home } from "./components";
+import { ApiDemo, ChatDemo, VideoDemo, ImageDemo, Home } from "./pages";
 
 const routes = createBrowserRouter([
   {

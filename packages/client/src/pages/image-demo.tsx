@@ -365,3 +365,4 @@ export const ImageDemo = () => {
     </div>
   );
 };
+
