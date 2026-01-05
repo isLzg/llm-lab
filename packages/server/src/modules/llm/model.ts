@@ -83,4 +83,18 @@ export const LLMModel = {
     success: t.Boolean(),
     message: t.Optional(t.String()),
   }),
+
+  // Image generation models
+  // POST body for create image generation task
+  createImageTaskBody: t.Object({
+    model: t.String(),
+    prompt: t.String(),
+    negative_prompt: t.Optional(t.String()),
+    width: t.Optional(t.Number()),
+    height: t.Optional(t.Number()),
+    steps: t.Optional(t.Number()),
+    seed: t.Optional(t.Number()),
+    guidance_scale: t.Optional(t.Number()),
+    num_images: t.Optional(t.Number()),
+  }),
 };
