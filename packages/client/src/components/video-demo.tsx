@@ -1,5 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { useState, useRef } from "react";
+import { Link } from "react-router";
 import { api } from "../api/client";
 
 export const VideoDemo = () => {
@@ -270,6 +271,12 @@ export const VideoDemo = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <Link
+        to="/"
+        className="mb-4 text-blue-600 hover:text-blue-800 underline"
+      >
+        ← 返回首页
+      </Link>
       <h1 className="text-2xl font-bold mb-6">视频生成 API Demo</h1>
       <p className="text-gray-600 mb-4">
         点击按钮创建视频生成任务，系统将自动轮询任务状态

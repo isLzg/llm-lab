@@ -1,5 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
+import { Link } from "react-router";
 import { api } from "../api/client";
 
 export const ApiDemo = () => {
@@ -102,6 +103,12 @@ export const ApiDemo = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <Link
+        to="/"
+        className="mb-4 text-blue-600 hover:text-blue-800 underline"
+      >
+        ← 返回首页
+      </Link>
       <h1 className="text-2xl font-bold mb-6">Eden Treaty API Demo</h1>
       <p className="text-gray-600 mb-4">
         端到端类型安全的 API 调用示例

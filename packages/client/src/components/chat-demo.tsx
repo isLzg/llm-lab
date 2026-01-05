@@ -1,5 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
+import { Link } from "react-router";
 import { api } from "../api/client";
 
 export const ChatDemo = () => {
@@ -104,6 +105,12 @@ export const ChatDemo = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <Link
+        to="/"
+        className="mb-4 text-blue-600 hover:text-blue-800 underline"
+      >
+        ← 返回首页
+      </Link>
       <h1 className="text-2xl font-bold mb-6">LLM API Demo</h1>
       <p className="text-gray-600 mb-4">选择 API 并点击按钮获取回答</p>
 

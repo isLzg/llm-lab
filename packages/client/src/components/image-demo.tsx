@@ -1,5 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { useState, useRef } from "react";
+import { Link } from "react-router";
 
 const PLACEHOLDER_TEXT = "例如：一只可爱的小猫坐在窗台上，阳光洒在它身上";
 
@@ -244,6 +245,12 @@ export const ImageDemo = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <Link
+        to="/"
+        className="mb-4 text-blue-600 hover:text-blue-800 underline"
+      >
+        ← 返回首页
+      </Link>
       <h1 className="text-2xl font-bold mb-6">图片生成 API Demo</h1>
       <p className="text-gray-600 mb-4">
         输入图片描述，点击按钮创建图片生成任务，系统将通过流式响应实时更新状态
