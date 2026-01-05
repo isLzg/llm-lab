@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router";
-import { ApiDemo, GeminiDemo } from "./components";
+import { ApiDemo, GeminiDemo, VideoDemo } from "./components";
 
 const routes = createBrowserRouter([
   {
@@ -9,6 +9,10 @@ const routes = createBrowserRouter([
   {
     path: "/api-demo",
     element: <ApiDemo />,
+  },
+  {
+    path: "/video-demo",
+    element: <VideoDemo />,
   },
 ]);
 

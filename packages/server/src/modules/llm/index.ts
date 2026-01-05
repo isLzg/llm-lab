@@ -54,4 +54,23 @@ export const llm = new Elysia({ prefix: "/llm" })
     {
       body: LLMModel.generateContentBody,
     }
+  )
+  // Volcengine Video generation routes
+  .post(
+    "/video/create",
+    ({ body }) => {
+      return LLMService.createVideoTask(body);
+    },
+    {
+      body: LLMModel.createVideoTaskBody,
+    }
+  )
+  .get(
+    "/video/task/:taskId",
+    ({ params }) => {
+      return LLMService.queryVideoTask(params.taskId);
+    },
+    {
+      params: LLMModel.queryVideoTaskParams,
+    }
   );
