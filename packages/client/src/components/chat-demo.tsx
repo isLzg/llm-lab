@@ -2,7 +2,7 @@ import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 import { api } from "../api/client";
 
-export const GeminiDemo = () => {
+export const ChatDemo = () => {
   const [result, setResult] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [apiType, setApiType] = useState<"gemini" | "deepseek">("gemini");
@@ -147,3 +147,4 @@ export const GeminiDemo = () => {
     </div>
   );
 };
+

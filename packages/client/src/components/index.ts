@@ -1,4 +1,4 @@
 export * from "./run-button";
 export * from "./api-demo";
-export * from "./gemini-demo";
+export * from "./chat-demo";
 export * from "./video-demo";
