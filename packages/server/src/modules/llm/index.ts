@@ -4,11 +4,58 @@ import { LLMModel } from "./model";
 
 // Unified LLM module with both Gemini and DeepSeek routes
 export const llm = new Elysia({ prefix: "/llm" })
-  // Gemini route
+  // Gemini route with streaming
   .post(
     "/gemini/generate",
-    ({ body }) => {
-      return LLMService.generateContentWithGemini(body);
+    async ({ body }) => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of LLMService.generateContentWithGeminiStream(
+              body
+            )) {
+              if (chunk.type === "content") {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "content",
+                      text: chunk.content,
+                    })}\n\n`
+                  )
+                );
+              } else if (chunk.type === "done") {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "done",
+                      content: chunk.content,
+                    })}\n\n`
+                  )
+                );
+              }
+            }
+            controller.close();
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ error: errorMessage })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
     },
     {
       body: LLMModel.generateContentBody,

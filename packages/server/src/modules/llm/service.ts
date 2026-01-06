@@ -13,34 +13,45 @@ const deepseek = new OpenAI({
 });
 
 export const LLMService = {
-  // Gemini API
-  async generateContentWithGemini(
+  // Gemini API with streaming
+  async *generateContentWithGeminiStream(
     body: typeof LLMModel.generateContentBody.static
-  ): Promise<typeof LLMModel.generateContentResponse.static> {
-    console.log("🤖 Gemini ~ body:", body);
+  ): AsyncGenerator<
+    { type: "content"; content: string } | { type: "done"; content: string },
+    void,
+    unknown
+  > {
+    let accumulatedContent = "";
 
     try {
-      const response = await gemini.models.generateContent({
+      const streamGenerator = await gemini.models.generateContentStream({
         model: body.model || "gemini-2.5-flash",
         contents: body.contents,
       });
 
-      const text = response.text || "";
-      console.log("🤖 Gemini ~ response:", text);
+      for await (const chunk of streamGenerator) {
+        const text = chunk.text || "";
+        if (text) {
+          accumulatedContent += text;
+          yield { type: "content", content: text };
+        }
+      }
 
-      // Record token usage
+      // Record token usage after stream completes
       UsageService.recordUsage({
         service: "gemini",
         model: body.model || "gemini-2.5-flash",
         inputText: body.contents,
-        outputText: text,
+        outputText: accumulatedContent,
       });
 
-      return {
-        text,
+      // Yield final done event with accumulated content
+      yield {
+        type: "done",
+        content: accumulatedContent,
       };
     } catch (error) {
-      console.error("❌ Gemini API error:", error);
+      console.error("❌ Gemini Stream API error:", error);
       throw error;
     }
   },
@@ -55,8 +66,6 @@ export const LLMService = {
     void,
     unknown
   > {
-    console.log("🤖 DeepSeek Stream ~ body:", body);
-
     let accumulatedReasoning = "";
     let accumulatedContent = "";
 
@@ -130,8 +139,6 @@ export const LLMService = {
   async createVideoTask(
     body: typeof LLMModel.createVideoTaskBody.static
   ): Promise<typeof LLMModel.createVideoTaskResponse.static> {
-    console.log("🎬 Create Video Task ~ body:", body);
-
     try {
       const response = await fetch(
         `${
@@ -172,8 +179,6 @@ export const LLMService = {
   async queryVideoTask(
     taskId: string
   ): Promise<typeof LLMModel.queryVideoTaskResponse.static> {
-    console.log("🎬 Query Video Task ~ taskId:", taskId);
-
     try {
       const response = await fetch(
         `${

@@ -1,7 +1,6 @@
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 import { Link } from "react-router";
-import { api } from "../api/client";
 
 export const ChatDemo = () => {
   const [result, setResult] = useState<string>("");
@@ -16,20 +15,106 @@ export const ChatDemo = () => {
     setReasoning("");
     try {
       const question = "Why is the sky blue?";
-      let response: string;
 
       if (apiType === "gemini") {
-        const { data, error } = await api.llm.gemini.generate.post({
-          contents: question,
-          model: "gemini-2.5-flash",
-        });
-        if (error) {
-          setResult(`Error: ${JSON.stringify(error, null, 2)}`);
+        // Use streaming for Gemini
+        const fetchResponse = await fetch(
+          "http://localhost:3000/llm/gemini/generate",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: question,
+              model: "gemini-2.5-flash",
+            }),
+          }
+        );
+
+        if (!fetchResponse.ok) {
+          const errorData = await fetchResponse
+            .json()
+            .catch(() => ({ error: "Unknown error" }));
+          setResult(`Error: ${JSON.stringify(errorData, null, 2)}`);
           return;
         }
-        response = data?.text || "No response";
-        setResult(response);
-      } else {
+
+        // Read stream
+        const reader = fetchResponse.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = "";
+        let buffer = "";
+
+        if (!reader) {
+          setResult("Error: No response stream");
+          return;
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.trim() === "") continue;
+
+              if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.error) {
+                    setResult(`Error: ${data.error}`);
+                    return;
+                  }
+                  if (data.type === "content" && data.text) {
+                    accumulatedText += data.text;
+                    setResult(accumulatedText);
+                  } else if (data.type === "done") {
+                    // Final update with complete content
+                    if (data.content) {
+                      setResult(data.content);
+                    }
+                  } else if (data.text && !data.type) {
+                    // Fallback
+                    accumulatedText += data.text;
+                    setResult(accumulatedText);
+                  }
+                } catch (e) {
+                  // Ignore parse errors for incomplete chunks
+                  console.error("Failed to parse SSE data:", e, "Line:", line);
+                }
+              }
+            }
+          }
+
+          // Process remaining buffer if any
+          if (buffer.trim()) {
+            if (buffer.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(buffer.slice(6));
+                if (data.type === "content" && data.text) {
+                  accumulatedText += data.text;
+                  setResult(accumulatedText);
+                } else if (data.type === "done" && data.content) {
+                  setResult(data.content);
+                }
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        return;
+      }
+
+      // DeepSeek streaming (no else needed since previous branch returns)
+      {
         // Use streaming for DeepSeek
         const fetchResponse = await fetch(
           "http://localhost:3000/llm/deepseek/generate",
@@ -59,27 +144,64 @@ export const ChatDemo = () => {
         const decoder = new TextDecoder();
         let accumulatedText = "";
         let accumulatedReasoning = "";
+        let buffer = "";
 
         if (!reader) {
           setResult("Error: No response stream");
           return;
         }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.error) {
-                  setResult(`Error: ${data.error}`);
-                  return;
+            for (const line of lines) {
+              if (line.trim() === "") continue;
+
+              if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.error) {
+                    setResult(`Error: ${data.error}`);
+                    return;
+                  }
+                  if (data.type === "reasoning" && data.text) {
+                    accumulatedReasoning += data.text;
+                    setReasoning(accumulatedReasoning);
+                  } else if (data.type === "content" && data.text) {
+                    accumulatedText += data.text;
+                    setResult(accumulatedText);
+                  } else if (data.type === "done") {
+                    // Final update with complete content
+                    if (data.reasoning) {
+                      setReasoning(data.reasoning);
+                    }
+                    if (data.content) {
+                      setResult(data.content);
+                    }
+                  } else if (data.text && !data.type) {
+                    // Fallback for non-thinking mode
+                    accumulatedText += data.text;
+                    setResult(accumulatedText);
+                  }
+                } catch (e) {
+                  // Ignore parse errors for incomplete chunks
+                  console.error("Failed to parse SSE data:", e, "Line:", line);
                 }
+              }
+            }
+          }
+
+          // Process remaining buffer if any
+          if (buffer.trim()) {
+            if (buffer.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(buffer.slice(6));
                 if (data.type === "reasoning" && data.text) {
                   accumulatedReasoning += data.text;
                   setReasoning(accumulatedReasoning);
@@ -87,26 +209,21 @@ export const ChatDemo = () => {
                   accumulatedText += data.text;
                   setResult(accumulatedText);
                 } else if (data.type === "done") {
-                  // Final update with complete content
                   if (data.reasoning) {
                     setReasoning(data.reasoning);
                   }
                   if (data.content) {
                     setResult(data.content);
                   }
-                } else if (data.text && !data.type) {
-                  // Fallback for non-thinking mode
-                  accumulatedText += data.text;
-                  setResult(accumulatedText);
                 }
               } catch (e) {
-                // Ignore parse errors for incomplete chunks
+                // Ignore parse errors
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
-
-        // Stream is complete, result is already updated
         return;
       }
     } catch (err) {
