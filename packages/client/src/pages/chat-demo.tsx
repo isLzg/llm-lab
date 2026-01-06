@@ -1,6 +1,7 @@
 import { Button } from "@base-ui/react/button";
 import { useState } from "react";
 import { Link } from "react-router";
+import { Streamdown } from "streamdown";
 
 export const ChatDemo = () => {
   const [result, setResult] = useState<string>("");
@@ -18,24 +19,19 @@ export const ChatDemo = () => {
 
       if (apiType === "gemini") {
         // Use streaming for Gemini
-        const fetchResponse = await fetch(
-          "http://localhost:3000/llm/gemini/generate",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: question,
-              model: "gemini-2.5-flash",
-            }),
-          }
-        );
+        const fetchResponse = await fetch("http://localhost:3000/llm/gemini/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: question,
+            model: "gemini-2.5-flash",
+          }),
+        });
 
         if (!fetchResponse.ok) {
-          const errorData = await fetchResponse
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
+          const errorData = await fetchResponse.json().catch(() => ({ error: "Unknown error" }));
           setResult(`Error: ${JSON.stringify(errorData, null, 2)}`);
           return;
         }
@@ -116,25 +112,20 @@ export const ChatDemo = () => {
       // DeepSeek streaming (no else needed since previous branch returns)
       {
         // Use streaming for DeepSeek
-        const fetchResponse = await fetch(
-          "http://localhost:3000/llm/deepseek/generate",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: question,
-              model: "deepseek-chat",
-              ...(thinkingMode && { thinking: { type: "enabled" } }),
-            }),
-          }
-        );
+        const fetchResponse = await fetch("http://localhost:3000/llm/deepseek/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: question,
+            model: "deepseek-chat",
+            ...(thinkingMode && { thinking: { type: "enabled" } }),
+          }),
+        });
 
         if (!fetchResponse.ok) {
-          const errorData = await fetchResponse
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
+          const errorData = await fetchResponse.json().catch(() => ({ error: "Unknown error" }));
           setResult(`Error: ${JSON.stringify(errorData, null, 2)}`);
           return;
         }
@@ -280,37 +271,63 @@ export const ChatDemo = () => {
       )}
 
       <div className="flex flex-wrap justify-center gap-2 mb-6">
-        <Button
-          className={buttonClass}
-          onClick={handleGenerateContent}
-          disabled={loading}
-        >
-          {loading
-            ? "Loading..."
-            : `调用 ${apiType === "gemini" ? "Gemini" : "DeepSeek"} API`}
+        <Button className={buttonClass} onClick={handleGenerateContent} disabled={loading}>
+          {loading ? "Loading..." : `调用 ${apiType === "gemini" ? "Gemini" : "DeepSeek"} API`}
         </Button>
       </div>
 
       {(reasoning || result) && (
-        <div className="w-full max-w-2xl space-y-4">
+        <div className="w-full max-w-6xl space-y-6">
           {reasoning && (
             <div>
-              <h2 className="text-lg font-semibold mb-2 text-purple-700">
-                思维链 (Reasoning):
-              </h2>
-              <pre className="bg-purple-50 border border-purple-200 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap">
-                {reasoning}
-              </pre>
+              <h2 className="text-lg font-semibold mb-3 text-purple-700">思维链 (Reasoning):</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 原始版本 - 不使用 Streamdown */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-600">
+                    原始版本 (不使用 Streamdown)
+                  </h3>
+                  <pre className="bg-purple-50 border border-purple-200 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap h-64">
+                    {reasoning}
+                  </pre>
+                </div>
+                {/* 美化版本 - 使用 Streamdown */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-600">
+                    美化版本 (使用 Streamdown)
+                  </h3>
+                  <div className="bg-purple-50 border border-purple-200 p-4 rounded-md overflow-auto text-sm h-64 streamdown-container">
+                    <Streamdown isAnimating={loading}>{reasoning}</Streamdown>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           {result && (
             <div>
-              <h2 className="text-lg font-semibold mb-2 text-blue-700">
-                最终回答 (Content):
+              <h2 className="text-lg font-semibold mb-3 text-blue-700">
+                {apiType === "gemini" ? "Gemini" : "DeepSeek"} 最终回答 (Content):
               </h2>
-              <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap">
-                {result}
-              </pre>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 原始版本 - 不使用 Streamdown */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-600">
+                    原始版本 (不使用 Streamdown)
+                  </h3>
+                  <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap h-64">
+                    {result}
+                  </pre>
+                </div>
+                {/* 美化版本 - 使用 Streamdown */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-600">
+                    美化版本 (使用 Streamdown)
+                  </h3>
+                  <div className="bg-gray-100 p-4 rounded-md overflow-auto text-sm h-64 streamdown-container">
+                    <Streamdown isAnimating={loading}>{result}</Streamdown>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

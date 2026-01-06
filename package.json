@@ -2,9 +2,7 @@
   "name": "llm-lab",
   "private": true,
   "version": "0.0.1",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "clean": "rm -rf node_modules packages/client/node_modules packages/server/node_modules bun.lock packages/client/dist packages/server/dist"
   },

@@ -3,3 +3,98 @@
 .root {
   isolation: isolate;
 }
+
+.streamdown-container ol,
+.streamdown-container ul {
+  list-style-position: outside !important;
+  padding-left: 1.5em !important;
+  margin: 0.5em 0 !important;
+}
+
+.streamdown-container ol {
+  list-style-type: decimal !important;
+}
+
+.streamdown-container ul {
+  list-style-type: disc !important;
+}
+
+.streamdown-container li {
+  margin: 0.25em 0 !important;
+  line-height: 1.6 !important;
+  display: list-item !important;
+}
+
+/* 嵌套列表样式 */
+.streamdown-container ol ol {
+  list-style-type: lower-alpha !important;
+  margin-top: 0.25em !important;
+}
+
+.streamdown-container ol ol ol {
+  list-style-type: lower-roman !important;
+}
+
+.streamdown-container ul ul {
+  list-style-type: circle !important;
+}
+
+.streamdown-container ul ul ul {
+  list-style-type: square !important;
+}
+
+/* 确保 Streamdown 渲染的所有内容都有正确的样式 */
+.streamdown-container p {
+  margin: 0.5em 0;
+}
+
+.streamdown-container h1,
+.streamdown-container h2,
+.streamdown-container h3,
+.streamdown-container h4,
+.streamdown-container h5,
+.streamdown-container h6 {
+  font-weight: bold;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.streamdown-container h1 {
+  font-size: 2em;
+}
+
+.streamdown-container h2 {
+  font-size: 1.5em;
+}
+
+.streamdown-container h3 {
+  font-size: 1.25em;
+}
+
+.streamdown-container code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-family: monospace;
+}
+
+.streamdown-container pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.streamdown-container pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.streamdown-container strong {
+  font-weight: bold;
+}
+
+.streamdown-container em {
+  font-style: italic;
+}
