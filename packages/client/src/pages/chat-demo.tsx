@@ -5,12 +5,15 @@ import { api } from "../api/client";
 
 export const ChatDemo = () => {
   const [result, setResult] = useState<string>("");
+  const [reasoning, setReasoning] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [apiType, setApiType] = useState<"gemini" | "deepseek">("gemini");
+  const [thinkingMode, setThinkingMode] = useState(false);
 
   const handleGenerateContent = async () => {
     setLoading(true);
     setResult("");
+    setReasoning("");
     try {
       const question = "Why is the sky blue?";
       let response: string;
@@ -25,6 +28,7 @@ export const ChatDemo = () => {
           return;
         }
         response = data?.text || "No response";
+        setResult(response);
       } else {
         // Use streaming for DeepSeek
         const fetchResponse = await fetch(
@@ -37,6 +41,7 @@ export const ChatDemo = () => {
             body: JSON.stringify({
               contents: question,
               model: "deepseek-chat",
+              ...(thinkingMode && { thinking: { type: "enabled" } }),
             }),
           }
         );
@@ -53,6 +58,7 @@ export const ChatDemo = () => {
         const reader = fetchResponse.body?.getReader();
         const decoder = new TextDecoder();
         let accumulatedText = "";
+        let accumulatedReasoning = "";
 
         if (!reader) {
           setResult("Error: No response stream");
@@ -74,7 +80,22 @@ export const ChatDemo = () => {
                   setResult(`Error: ${data.error}`);
                   return;
                 }
-                if (data.text) {
+                if (data.type === "reasoning" && data.text) {
+                  accumulatedReasoning += data.text;
+                  setReasoning(accumulatedReasoning);
+                } else if (data.type === "content" && data.text) {
+                  accumulatedText += data.text;
+                  setResult(accumulatedText);
+                } else if (data.type === "done") {
+                  // Final update with complete content
+                  if (data.reasoning) {
+                    setReasoning(data.reasoning);
+                  }
+                  if (data.content) {
+                    setResult(data.content);
+                  }
+                } else if (data.text && !data.type) {
+                  // Fallback for non-thinking mode
                   accumulatedText += data.text;
                   setResult(accumulatedText);
                 }
@@ -88,8 +109,6 @@ export const ChatDemo = () => {
         // Stream is complete, result is already updated
         return;
       }
-
-      setResult(response);
     } catch (err) {
       setResult(`Exception: ${err}`);
     } finally {
@@ -105,10 +124,7 @@ export const ChatDemo = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      <Link
-        to="/"
-        className="mb-4 text-blue-600 hover:text-blue-800 underline"
-      >
+      <Link to="/" className="mb-4 text-blue-600 hover:text-blue-800 underline">
         ← 返回首页
       </Link>
       <h1 className="text-2xl font-bold mb-6">LLM API Demo</h1>
@@ -131,6 +147,21 @@ export const ChatDemo = () => {
         </Button>
       </div>
 
+      {apiType === "deepseek" && (
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={thinkingMode}
+              onChange={(e) => setThinkingMode(e.target.checked)}
+              disabled={loading}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">开启思考模式</span>
+          </label>
+        </div>
+      )}
+
       <div className="flex flex-wrap justify-center gap-2 mb-6">
         <Button
           className={buttonClass}
@@ -143,15 +174,30 @@ export const ChatDemo = () => {
         </Button>
       </div>
 
-      {result && (
-        <div className="w-full max-w-2xl">
-          <h2 className="text-lg font-semibold mb-2">Response:</h2>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap">
-            {result}
-          </pre>
+      {(reasoning || result) && (
+        <div className="w-full max-w-2xl space-y-4">
+          {reasoning && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2 text-purple-700">
+                思维链 (Reasoning):
+              </h2>
+              <pre className="bg-purple-50 border border-purple-200 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap">
+                {reasoning}
+              </pre>
+            </div>
+          )}
+          {result && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2 text-blue-700">
+                最终回答 (Content):
+              </h2>
+              <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm whitespace-pre-wrap">
+                {result}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
-

@@ -6,6 +6,11 @@ export const LLMModel = {
   generateContentBody: t.Object({
     contents: t.String(),
     model: t.Optional(t.String()),
+    thinking: t.Optional(
+      t.Object({
+        type: t.Literal("enabled"),
+      })
+    ),
   }),
 
   // Response type

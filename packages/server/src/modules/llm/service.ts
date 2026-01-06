@@ -48,33 +48,78 @@ export const LLMService = {
   // DeepSeek API with streaming
   async *generateContentWithDeepSeekStream(
     body: typeof LLMModel.generateContentBody.static
-  ): AsyncGenerator<string, void, unknown> {
+  ): AsyncGenerator<
+    | { type: "reasoning"; content: string }
+    | { type: "content"; content: string }
+    | { type: "done"; reasoning: string; content: string },
+    void,
+    unknown
+  > {
     console.log("🤖 DeepSeek Stream ~ body:", body);
 
-    let accumulatedOutput = "";
+    let accumulatedReasoning = "";
+    let accumulatedContent = "";
 
     try {
+      const isThinkingMode =
+        body.thinking?.type === "enabled" || body.model === "deepseek-reasoner";
+
+      // If model is explicitly set to deepseek-reasoner, use it directly
+      // Otherwise, use the specified model (or default) and pass thinking via extra_body
+      const modelToUse =
+        body.model === "deepseek-reasoner"
+          ? "deepseek-reasoner"
+          : body.model || "deepseek-chat";
+
       const stream = await deepseek.chat.completions.create({
         messages: [{ role: "user", content: body.contents }],
-        model: body.model || "deepseek-chat",
+        model: modelToUse,
         stream: true,
+        ...(isThinkingMode && body.model !== "deepseek-reasoner"
+          ? {
+              extra_body: {
+                thinking: { type: "enabled" },
+              },
+            }
+          : {}),
       });
 
       for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
+        const delta = chunk.choices[0]?.delta;
+        // Use type assertion for reasoning_content as it's not in OpenAI SDK types yet
+        // DeepSeek extends the delta type with reasoning_content field
+        const reasoningContent =
+          (delta as typeof delta & { reasoning_content?: string })
+            ?.reasoning_content || "";
+        const content = delta?.content || "";
+
+        if (reasoningContent) {
+          accumulatedReasoning += reasoningContent;
+          yield { type: "reasoning", content: reasoningContent };
+        }
+
         if (content) {
-          accumulatedOutput += content;
-          yield content;
+          accumulatedContent += content;
+          yield { type: "content", content };
         }
       }
 
       // Record token usage after stream completes
       UsageService.recordUsage({
         service: "deepseek",
-        model: body.model || "deepseek-chat",
+        model: isThinkingMode
+          ? "deepseek-reasoner"
+          : body.model || "deepseek-chat",
         inputText: body.contents,
-        outputText: accumulatedOutput,
+        outputText: accumulatedReasoning + accumulatedContent,
       });
+
+      // Yield final done event with accumulated content
+      yield {
+        type: "done",
+        reasoning: accumulatedReasoning,
+        content: accumulatedContent,
+      };
     } catch (error) {
       console.error("❌ DeepSeek Stream API error:", error);
       throw error;

@@ -25,9 +25,35 @@ export const llm = new Elysia({ prefix: "/llm" })
             for await (const chunk of LLMService.generateContentWithDeepSeekStream(
               body
             )) {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
-              );
+              if (chunk.type === "reasoning") {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "reasoning",
+                      text: chunk.content,
+                    })}\n\n`
+                  )
+                );
+              } else if (chunk.type === "content") {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "content",
+                      text: chunk.content,
+                    })}\n\n`
+                  )
+                );
+              } else if (chunk.type === "done") {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "done",
+                      reasoning: chunk.reasoning,
+                      content: chunk.content,
+                    })}\n\n`
+                  )
+                );
+              }
             }
             controller.close();
           } catch (error) {
