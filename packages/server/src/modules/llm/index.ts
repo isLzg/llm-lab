@@ -136,6 +136,50 @@ export const llm = new Elysia({ prefix: "/llm" })
       }),
     }
   )
+  // Volcengine Image-to-Image generation routes
+  .post(
+    "/image/image-to-image/create",
+    async ({ body }) => {
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of LLMService.createImageToImageTaskStream(
+              body
+            )) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`)
+              );
+            }
+            controller.close();
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  error: errorMessage,
+                })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    },
+    {
+      body: LLMModel.createImageToImageTaskBody,
+    }
+  )
   // Mastra Agent routes
   .post(
     "/mastra/stream",

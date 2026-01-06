@@ -98,6 +98,21 @@ export const LLMModel = {
     num_images: t.Optional(t.Number()),
   }),
 
+  // POST body for create image-to-image generation task
+  createImageToImageTaskBody: t.Object({
+    model: t.String(),
+    prompt: t.String(),
+    image_urls: t.Optional(t.Array(t.String())),
+    negative_prompt: t.Optional(t.String()),
+    width: t.Optional(t.Number()),
+    height: t.Optional(t.Number()),
+    steps: t.Optional(t.Number()),
+    seed: t.Optional(t.Number()),
+    guidance_scale: t.Optional(t.Number()),
+    num_images: t.Optional(t.Number()),
+    scale: t.Optional(t.Number()),
+  }),
+
   // Mastra Agent models
   // POST body for Mastra Agent chat
   mastraAgentChatBody: t.Object({

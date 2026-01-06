@@ -4,6 +4,7 @@ import {
   ChatDemo,
   VideoDemo,
   ImageDemo,
+  ImageToImageDemo,
   MastraDemo,
   UsageDemo,
   Home,
@@ -29,6 +30,10 @@ const routes = createBrowserRouter([
   {
     path: "/image-demo",
     element: <ImageDemo />,
+  },
+  {
+    path: "/image-to-image-demo",
+    element: <ImageToImageDemo />,
   },
   {
     path: "/mastra-demo",

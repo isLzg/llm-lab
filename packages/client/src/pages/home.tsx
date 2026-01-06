@@ -37,6 +37,12 @@ export const Home = () => {
             </Button>
           </Link>
           
+          <Link to="/image-to-image-demo" className="block">
+            <Button className="w-full h-24 text-lg font-semibold hover:scale-105 transition-transform">
+              🎨 Image-to-Image Demo
+            </Button>
+          </Link>
+          
           <Link to="/mastra-demo" className="block">
             <Button className="w-full h-24 text-lg font-semibold hover:scale-105 transition-transform">
               🌤️ Mastra Agent Demo
