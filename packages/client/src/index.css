@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+:root {
+  --background-gray-main: #f8f8f7;
+  --fill-input-chat: #ffffff;
+  --border-main: #ffffff14;
+  --text-disable: #b9b9b7;
+  --text-secondary: #666666;
+  --fill-tsp-gray-main: #f0f0f0;
+  --icon-primary: #333333;
+}
+
 .root {
   isolation: isolate;
 }

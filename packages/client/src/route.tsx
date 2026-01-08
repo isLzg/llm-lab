@@ -7,6 +7,7 @@ import {
   ImageToImageDemo,
   MastraDemo,
   UsageDemo,
+  PromptInputDemo,
   Home,
 } from "./pages";
 
@@ -42,6 +43,10 @@ const routes = createBrowserRouter([
   {
     path: "/usage-demo",
     element: <UsageDemo />,
+  },
+  {
+    path: "/prompt-input-demo",
+    element: <PromptInputDemo />,
   },
 ]);
 

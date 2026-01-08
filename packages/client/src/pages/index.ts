@@ -5,5 +5,6 @@ export * from "./image-demo";
 export * from "./image-to-image-demo";
 export * from "./mastra-demo";
 export * from "./usage-demo";
+export * from "./prompt-input-demo";
 export * from "./home";
 
